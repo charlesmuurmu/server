@@ -1,3 +1,5 @@
+#ifndef TABLE_CACHE_H_INCLUDED
+#define TABLE_CACHE_H_INCLUDED
 /* Copyright (c) 2000, 2012, Oracle and/or its affiliates.
    Copyright (c) 2010, 2011 Monty Program Ab
    Copyright (C) 2013 Sergey Vojtovich and MariaDB Foundation
@@ -296,3 +298,4 @@ static inline TABLE_SHARE *tdc_acquire_share_shortlived(THD *thd, TABLE_LIST *tl
   return tdc_acquire_share(thd, tl->db, tl->table_name, key, key_length,
                            tl->mdl_request.key.tc_hash_value(), flags, 0);
 }
+#endif /* TABLE_CACHE_H_INCLUDED */

@@ -29,7 +29,7 @@
 
   Table cache actions:
   - add new TABLE object to cache (tc_add_table())
-  - acquire TABLE object from cache (tc_acquire_table())
+  - acquire TABLE object from cache (TDC_element::acquire_table())
   - release TABLE object to cache (tc_release_table())
   - purge unused TABLE objects from cache (tc_purge())
   - purge unused TABLE objects of a table from cache (tdc_remove_table())
@@ -589,6 +589,7 @@ void tdc_unlock_share(TDC_element *element)
   key                   Table cache key
   key_length            Length of key
   flags                 operation: what to open table or view
+  out_table             TABLE for the requested table
 
   IMPLEMENTATION
     Get a table definition from the table definition cache.
