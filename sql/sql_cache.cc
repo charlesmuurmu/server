@@ -1983,32 +1983,28 @@ def_week_frmt: %lu, in_trans: %d, autocommit: %d",
     Query_cache_table *table = block_table->parent;
 
     /*
-      Check that we have not temporary tables with same names of tables
-      of this query. If we have such tables, we will not send data from
-      query cache, because temporary tables hide real tables by which
+      Check that we do not have temporary tables with same names as that of
+      base tables from this query. If we have such tables, we will not send
+      data from query cache, because temporary tables hide real tables by which
       query in query cache was made.
     */
-    for (tmptable= thd->temporary_tables; tmptable ; tmptable= tmptable->next)
+    if ((tmptable=
+         thd->find_temporary_table_with_base_key((char *) table->data(),
+                                                 table->key_length())))
     {
-      if (tmptable->s->table_cache_key.length - TMP_TABLE_KEY_EXTRA == 
-          table->key_length() &&
-          !memcmp(tmptable->s->table_cache_key.str, table->data(),
-                  table->key_length()))
-      {
-        DBUG_PRINT("qcache",
-                   ("Temporary table detected: '%s.%s'",
-                    tmptable->s->db.str, tmptable->alias.c_ptr()));
-        unlock();
-        /*
-          We should not store result of this query because it contain
-          temporary tables => assign following variable to make check
-          faster.
-        */
-        thd->query_cache_is_applicable= 0;      // Query can't be cached
-        thd->lex->safe_to_cache_query= 0;       // For prepared statements
-        BLOCK_UNLOCK_RD(query_block);
-        DBUG_RETURN(-1);
-      }
+      DBUG_PRINT("qcache",
+                 ("Temporary table detected: '%s.%s'",
+                  tmptable->s->db.str, tmptable->s->table_name.str));
+      unlock();
+      /*
+        We should not store result of this query because it contain
+        temporary tables => assign following variable to make check
+        faster.
+      */
+      thd->query_cache_is_applicable= 0;        // Query can't be cached
+      thd->lex->safe_to_cache_query= 0;         // For prepared statements
+      BLOCK_UNLOCK_RD(query_block);
+      DBUG_RETURN(-1);
     }
 
     bzero((char*) &table_list,sizeof(table_list));

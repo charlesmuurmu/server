@@ -2,6 +2,7 @@
 #define TABLE_INCLUDED
 /* Copyright (c) 2000, 2013, Oracle and/or its affiliates.
    Copyright (c) 2009, 2014, SkySQL Ab.
+   Copyright (c) 2016, MariaDB Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1420,6 +1421,7 @@ struct All_share_tables
   }
 };
 
+typedef I_P_List <TABLE, All_share_tables> All_share_tables_list;
 
 enum enum_schema_table_state
 { 
@@ -2639,15 +2641,6 @@ inline bool is_infoschema_db(const char *name)
 }
 
 TYPELIB *typelib(MEM_ROOT *mem_root, List<String> &strings);
-
-/**
-  return true if the table was created explicitly.
-*/
-inline bool is_user_table(TABLE * table)
-{
-  const char *name= table->s->table_name.str;
-  return strncmp(name, tmp_file_prefix, tmp_file_prefix_length);
-}
 
 inline void mark_as_null_row(TABLE *table)
 {

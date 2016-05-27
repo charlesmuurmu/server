@@ -1,5 +1,6 @@
 /* Copyright (c) 2002, 2013, Oracle and/or its affiliates.
    Copyright (c) 2008, 2014, Monty Program Ab
+   Copyright (c) 2016, MariaDB Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1261,7 +1262,7 @@ static bool mysql_test_insert(Prepared_statement *stmt,
   */
   if (table_list->lock_type != TL_WRITE_DELAYED)
   {
-    if (open_temporary_tables(thd, table_list))
+    if (thd->open_temporary_tables(table_list))
       goto error;
   }
 
@@ -1840,7 +1841,7 @@ static bool mysql_test_create_view(Prepared_statement *stmt)
     Since we can't pre-open temporary tables for SQLCOM_CREATE_VIEW,
     (see mysql_create_view) we have to do it here instead.
   */
-  if (open_temporary_tables(thd, tables))
+  if (thd->open_temporary_tables(tables))
     goto err;
 
   if (open_normal_and_derived_tables(thd, tables, MYSQL_OPEN_FORCE_SHARED_MDL,
@@ -2092,7 +2093,7 @@ static bool check_prepared_statement(Prepared_statement *stmt)
   */
   if (sql_command_flags[sql_command] & CF_PREOPEN_TMP_TABLES)
   {
-    if (open_temporary_tables(thd, tables))
+    if (thd->open_temporary_tables(tables))
       goto error;
   }
 

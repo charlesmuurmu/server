@@ -904,7 +904,7 @@ bool tdc_remove_table(THD *thd, enum_tdc_remove_table_type remove_type,
   if (remove_type == TDC_RT_REMOVE_NOT_OWN ||
       remove_type == TDC_RT_REMOVE_NOT_OWN_KEEP_SHARE)
   {
-    TDC_element::All_share_tables_list::Iterator it(element->all_tables);
+    All_share_tables_list::Iterator it(element->all_tables);
     while ((table= it++))
     {
       my_refs++;
