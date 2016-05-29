@@ -4009,8 +4009,9 @@ public:
 
   TABLE *find_temporary_table(const char *db, const char *table_name);
   TABLE *find_temporary_table(const TABLE_LIST *tl);
-  TABLE *find_temporary_table_with_base_key(const char *key, uint key_length);
 
+  TMP_TABLE_SHARE *find_tmp_table_share_w_base_key(const char *key,
+                                                   uint key_length);
   TMP_TABLE_SHARE *find_tmp_table_share(const char *db,
                                         const char *table_name);
   TMP_TABLE_SHARE *find_tmp_table_share(const TABLE_LIST *tl);

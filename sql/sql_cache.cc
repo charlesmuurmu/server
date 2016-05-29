@@ -1979,7 +1979,7 @@ def_week_frmt: %lu, in_trans: %d, autocommit: %d",
   for (; block_table != block_table_end; block_table++)
   {
     TABLE_LIST table_list;
-    TABLE *tmptable;
+    TMP_TABLE_SHARE *tmptable;
     Query_cache_table *table = block_table->parent;
 
     /*
@@ -1989,12 +1989,12 @@ def_week_frmt: %lu, in_trans: %d, autocommit: %d",
       query in query cache was made.
     */
     if ((tmptable=
-         thd->find_temporary_table_with_base_key((char *) table->data(),
-                                                 table->key_length())))
+         thd->find_tmp_table_share_w_base_key((char *) table->data(),
+                                              table->key_length())))
     {
       DBUG_PRINT("qcache",
                  ("Temporary table detected: '%s.%s'",
-                  tmptable->s->db.str, tmptable->s->table_name.str));
+                  tmptable->db.str, tmptable->table_name.str));
       unlock();
       /*
         We should not store result of this query because it contain

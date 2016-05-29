@@ -155,7 +155,7 @@ TABLE *THD::find_temporary_table(const TABLE_LIST *tl)
 
 
 /**
-  Check whether an open table with the specified key is in use.
+  Check whether a temporary table exists with the specified key.
   The key, in this case, is not the usual key used for temporary tables.
   It does not contain server_id & pseudo_thread_id. This function is
   essentially used use to check whether there is any temporary table
@@ -165,14 +165,13 @@ TABLE *THD::find_temporary_table(const TABLE_LIST *tl)
   @return Success                     A pointer to table share object
           Failure                     NULL
 */
-TABLE *THD::find_temporary_table_with_base_key(const char *key,
-                                               uint key_length)
+TMP_TABLE_SHARE *THD::find_tmp_table_share_w_base_key(const char *key,
+                                                      uint key_length)
 {
-  DBUG_ENTER("THD::find_temporary_table_with_base_key");
+  DBUG_ENTER("THD::find_tmp_table_share_w_base_key");
 
   TMP_TABLE_SHARE *share;
-  TABLE *table;
-  TABLE *result= NULL;
+  TMP_TABLE_SHARE *result= NULL;
   bool locked;
 
   locked= lock_temporary_tables();
@@ -183,19 +182,7 @@ TABLE *THD::find_temporary_table_with_base_key(const char *key,
     if ((share->table_cache_key.length - TMP_TABLE_KEY_EXTRA) == key_length
         && !memcmp(share->table_cache_key.str, key, key_length))
     {
-      /*
-        A matching TMP_TABLE_SHARE is found. We now need to find a TABLE
-        instance in use.
-      */
-      All_share_tables_list::Iterator tables_it(share->all_tmp_tables);
-      while ((table= tables_it ++))
-      {
-        if (table->query_id != 0)
-        {
-          result= table;
-          break;
-        }
-      }
+      result= share;
     }
   }
 
