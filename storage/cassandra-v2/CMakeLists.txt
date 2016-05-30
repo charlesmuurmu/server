@@ -26,7 +26,9 @@ IF(EXISTS ${Datastax_LIBS})
 "
 #include <cassandra.h>
 int main() {
-  
+  CassFuture* connect_future = NULL;
+  CassCluster* cluster = cass_cluster_new();
+  CassSession* session = cass_session_new();
   return 0;
 }
 " CASSANDRASE_OK)
