@@ -22,7 +22,8 @@
 #include "thr_lock.h"                    /* THR_LOCK, THR_LOCK_DATA */
 #include "handler.h"                     /* handler */
 #include "my_base.h"
-#include <cassandra.h>                     /* ha_rows */
+
+#include "cassandra.h"                     /* Access to cassandra API */
 
 
 typedef struct st_cassandra_v2_share {
