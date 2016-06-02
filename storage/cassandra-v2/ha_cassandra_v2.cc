@@ -43,3 +43,61 @@ ha_create_table_option cassandra_table_option_list[]=
   HA_TOPTION_STRING("column_family", column_family),
   HA_TOPTION_END
 };
+
+
+int ha_cassandra_v2::close(void)
+{
+ return 0; 
+}
+
+int ha_cassandra_v2::open(const char *name, int mode, uint test_if_locked)
+{
+ 
+}
+
+int ha_cassandra_v2::create(const char *name, TABLE *table_arg,
+                         HA_CREATE_INFO *create_info)
+{
+  
+}
+
+int ha_cassandra_v2::write_row(uchar *buf){
+  /* Still be be implemented*/
+  return HA_ERR_INTERNAL_ERROR;
+}
+
+int ha_cassandra_v2::update_row(const uchar *old_data, uchar *new_data){
+  return HA_ERR_INTERNAL_ERROR;
+}
+
+int ha_cassandra_v2::delete_row(const uchar *buf){
+  return HA_ERR_INTERNAL_ERROR;
+}
+
+int ha_cassandra_v2::rnd_init(bool scan){
+  return HA_ERR_INTERNAL_ERROR;
+} 
+
+int ha_cassandra_v2::rnd_end(){
+  return HA_ERR_INTERNAL_ERROR;
+}
+
+int ha_cassandra_v2::rnd_next(uchar *buf){
+  return HA_ERR_INTERNAL_ERROR;
+} 
+
+int ha_cassandra_v2::rnd_pos(uchar *buf, uchar *pos){
+  return HA_ERR_INTERNAL_ERROR;
+}
+
+void ha_cassandra_v2::position(const uchar *record){
+  return HA_ERR_INTERNAL_ERROR;
+} 
+
+int ha_cassandra_v2::info(uint){
+  return HA_ERR_INTERNAL_ERROR;
+} 
+
+int ha_cassandra_v2::delete_all_rows(void){
+  return HA_ERR_INTERNAL_ERROR;
+}
