@@ -47,18 +47,21 @@ ha_create_table_option cassandra_table_option_list[]=
 
 int ha_cassandra_v2::close(void)
 {
- return 0; 
+ /* Still be be implemented*/
+  return HA_ERR_INTERNAL_ERROR; 
 }
 
 int ha_cassandra_v2::open(const char *name, int mode, uint test_if_locked)
 {
- 
+  /* Still be be implemented*/
+  return HA_ERR_INTERNAL_ERROR;
 }
 
 int ha_cassandra_v2::create(const char *name, TABLE *table_arg,
                          HA_CREATE_INFO *create_info)
 {
-  
+  /* Still be be implemented*/
+  return HA_ERR_INTERNAL_ERROR;
 }
 
 int ha_cassandra_v2::write_row(uchar *buf){
@@ -101,3 +104,9 @@ int ha_cassandra_v2::info(uint){
 int ha_cassandra_v2::delete_all_rows(void){
   return HA_ERR_INTERNAL_ERROR;
 }
+
+THR_LOCK_DATA **ha_cassandra_v2::store_lock(THD *thd, THR_LOCK_DATA **to,
+                             enum thr_lock_type lock_type)
+  {
+    DBUG_RETURN(to);
+  }                      
