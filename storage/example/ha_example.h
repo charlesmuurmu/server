@@ -40,7 +40,7 @@
 #include "thr_lock.h"                    /* THR_LOCK, THR_LOCK_DATA */
 #include "handler.h"                     /* handler */
 #include "my_base.h"
-#include "cassandra.h"                    /* ha_rows */
+
 
 /** @brief
   Example_share is a class that will be shared among all open handlers.

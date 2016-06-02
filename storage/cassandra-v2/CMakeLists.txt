@@ -31,11 +31,8 @@ int main() {
   CassSession* session = cass_session_new();
   return 0;
 }
-" CASSANDRASE_OK)
+" CASSANDRASE_V2_OK)
 ENDIF()
-
-ENDIF()
-
 
 SET(cassandra_sources
     ha_cassandra_v2.cc
@@ -43,10 +40,10 @@ SET(cassandra_sources
 
 LINK_DIRECTORIES(${LINK_DIR})
 
-IF(CASSANDRASE_OK)
-  SET(CASSANDRA_DEB_FILES "usr/lib/mysql/plugin/ha_cassandra.so" PARENT_SCOPE)
+IF(CASSANDRASE_V2_OK)
+  SET(CASSANDRA_V2_DEB_FILES "usr/lib/mysql/plugin/ha_cassandra_v2.so" PARENT_SCOPE)
   MYSQL_ADD_PLUGIN(cassandra ${cassandra_sources} STORAGE_ENGINE
     MODULE_ONLY LINK_LIBRARIES cassandra COMPONENT cassandra-engine)
-ENDIF(CASSANDRASE_OK)
+ENDIF(CASSANDRASE_V2_OK)
 
 
