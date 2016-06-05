@@ -8670,11 +8670,14 @@ err_no_arena:
   @param fields        Item_fields list to be filled
   @param values        values to fill with
   @param ignore_errors TRUE if we should ignore errors
+  @param update        TRUE if update query
 
   @details
     fill_record() may set table->auto_increment_field_not_null and a
     caller should make sure that it is reset after their last call to this
     function.
+    default functions are executed for inserts.
+    virtual fields are always updated
 
   @return Status
   @retval true An error occurred.
@@ -8683,7 +8686,7 @@ err_no_arena:
 
 bool
 fill_record(THD *thd, TABLE *table_arg, List<Item> &fields, List<Item> &values,
-            bool ignore_errors)
+            bool ignore_errors, bool update)
 {
   List_iterator_fast<Item> f(fields),v(values);
   Item *value, *fld;
@@ -8714,7 +8717,7 @@ fill_record(THD *thd, TABLE *table_arg, List<Item> &fields, List<Item> &values,
     table_arg->auto_increment_field_not_null= FALSE;
     f.rewind();
   }
-  else if (thd->lex->unit.insert_table_with_stored_vcol)
+  else
     vcol_table= thd->lex->unit.insert_table_with_stored_vcol;
 
   while ((fld= f++))
@@ -8749,12 +8752,16 @@ fill_record(THD *thd, TABLE *table_arg, List<Item> &fields, List<Item> &values,
     DBUG_ASSERT(vcol_table == 0 || vcol_table == table);
     vcol_table= table;
   }
-  /* Update virtual fields*/
+
+  if (!update && table_arg->default_field &&
+      table_arg->update_default_fields(0, ignore_errors))
+    goto err;
+  /* Update virtual fields */
   thd->abort_on_warning= FALSE;
   if (vcol_table && vcol_table->vfield &&
       update_virtual_fields(thd, vcol_table,
                             vcol_table->triggers ? VCOL_UPDATE_ALL :
-                                                   VCOL_UPDATE_FOR_WRITE))
+                            VCOL_UPDATE_FOR_WRITE))
     goto err;
   thd->abort_on_warning= save_abort_on_warning;
   thd->no_errors=        save_no_errors;
@@ -8778,6 +8785,7 @@ void switch_to_nullable_trigger_fields(List<Item> &items, TABLE *table)
 {
   Field** field= table->field_to_fill();
 
+ /* True if we non_null fields and before triggers */
   if (field != table->field)
   {
     List_iterator_fast<Item> it(items);
@@ -8786,6 +8794,32 @@ void switch_to_nullable_trigger_fields(List<Item> &items, TABLE *table)
     while ((item= it++))
       item->walk(&Item::switch_to_nullable_fields_processor, 1, (uchar*)field);
     table->triggers->reset_extra_null_bitmap();
+  }
+}
+
+
+/**
+  Prepare Virtual fields and field with default expressions to use
+  trigger fields
+
+  This means redirecting from table->field to
+  table->field_to_fill(), if needed.
+*/
+
+void switch_to_nullable_trigger_fields(Field **info, TABLE *table)
+{
+  Field **trigger_field= table->field_to_fill();
+
+ /* True if we have virtual fields and non_null fields and before triggers */
+  if (info && trigger_field != table->field)
+  {
+    Field **field_ptr;
+    for (field_ptr= info; *field_ptr ; field_ptr++)
+    {
+      Field *field= (*field_ptr);
+      field->default_value->expr_item->walk(&Item::switch_to_nullable_fields_processor, 1, (uchar*) trigger_field);
+      *field_ptr= (trigger_field[field->field_index]);
+    }
   }
 }
 
@@ -8844,25 +8878,28 @@ static bool not_null_fields_have_null_values(TABLE *table)
 */
 
 bool
-fill_record_n_invoke_before_triggers(THD *thd, TABLE *table, List<Item> &fields,
+fill_record_n_invoke_before_triggers(THD *thd, TABLE *table,
+                                     List<Item> &fields,
                                      List<Item> &values, bool ignore_errors,
                                      enum trg_event_type event)
 {
   bool result;
   Table_triggers_list *triggers= table->triggers;
 
-  result= fill_record(thd, table, fields, values, ignore_errors);
+  result= fill_record(thd, table, fields, values, ignore_errors,
+                      event == TRG_EVENT_UPDATE);
 
-  if (!result && triggers)
-    result= triggers->process_triggers(thd, event, TRG_ACTION_BEFORE, TRUE) ||
-            not_null_fields_have_null_values(table);
-
-  /*
-    Re-calculate virtual fields to cater for cases when base columns are
-    updated by the triggers.
-  */
   if (!result && triggers)
   {
+    if (triggers->process_triggers(thd, event, TRG_ACTION_BEFORE,
+                                    TRUE) ||
+        not_null_fields_have_null_values(table))
+      return TRUE;
+
+    /*
+      Re-calculate virtual fields to cater for cases when base columns are
+      updated by the triggers.
+    */
     List_iterator_fast<Item> f(fields);
     Item *fld;
     Item_field *item_field;
@@ -8870,12 +8907,12 @@ fill_record_n_invoke_before_triggers(THD *thd, TABLE *table, List<Item> &fields,
     {
       fld= (Item_field*)f++;
       item_field= fld->field_for_view_update();
-      if (item_field && item_field->field && table && table->vfield)
+      if (item_field && table->vfield)
       {
         DBUG_ASSERT(table == item_field->field->table);
         result= update_virtual_fields(thd, table,
                                       table->triggers ? VCOL_UPDATE_ALL :
-                                                        VCOL_UPDATE_FOR_WRITE);
+                                      VCOL_UPDATE_FOR_WRITE);
       }
     }
   }
@@ -8885,6 +8922,7 @@ fill_record_n_invoke_before_triggers(THD *thd, TABLE *table, List<Item> &fields,
 
 /**
   Fill the field buffer of a table with the values of an Item list
+  All fields are given a value
 
   @param thd           thread handler
   @param table_arg     the table that is being modified
@@ -8960,7 +8998,8 @@ fill_record(THD *thd, TABLE *table, Field **ptr, List<Item> &values,
         goto err;
     field->set_explicit_default(value);
   }
-  /* Update virtual fields*/
+  /* There is no default fields to update, as all fields are updated */
+  /* Update virtual fields */
   thd->abort_on_warning= FALSE;
   if (table->vfield &&
       update_virtual_fields(thd, table, 
@@ -9020,8 +9059,9 @@ fill_record_n_invoke_before_triggers(THD *thd, TABLE *table, Field **ptr,
     DBUG_ASSERT(table == (*ptr)->table);
     if (table->vfield)
       result= update_virtual_fields(thd, table,
-                                    table->triggers ? VCOL_UPDATE_ALL : 
-                                                      VCOL_UPDATE_FOR_WRITE);
+                                    table->triggers ?
+                                    VCOL_UPDATE_ALL :
+                                    VCOL_UPDATE_FOR_WRITE);
   }
   return result;
 

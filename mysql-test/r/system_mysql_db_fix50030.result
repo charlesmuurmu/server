@@ -208,7 +208,7 @@ proc	CREATE TABLE `proc` (
   `sql_data_access` enum('CONTAINS_SQL','NO_SQL','READS_SQL_DATA','MODIFIES_SQL_DATA') NOT NULL DEFAULT 'CONTAINS_SQL',
   `is_deterministic` enum('YES','NO') NOT NULL DEFAULT 'NO',
   `security_type` enum('INVOKER','DEFINER') NOT NULL DEFAULT 'DEFINER',
-  `param_list` blob NOT NULL,
+  `param_list` blob NOT NULL DEFAULT '',
   `returns` longblob NOT NULL,
   `body` longblob NOT NULL,
   `definer` char(141) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',

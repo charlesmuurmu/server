@@ -2084,6 +2084,11 @@ public:
     return m_cpp_tok_start;
   }
 
+  void set_cpp_tok_start(const char *pos)
+  {
+    m_cpp_tok_start= pos;
+  }
+
   /** Get the token end position, in the raw buffer. */
   const char *get_tok_end()
   {
@@ -2176,10 +2181,12 @@ public:
     or -1, if no token was parsed in advance.
     Note: 0 is a legal token, and represents YYEOF.
   */
-  int lookahead_token;
+  int lookahead_token, lookahead_token2;
 
-  /** LALR(2) resolution, value of the look ahead token.*/
+  /** LALR(3) resolution, value of the look ahead token.*/
   LEX_YYSTYPE lookahead_yylval;
+  LEX_YYSTYPE lookahead_yylval2;
+  const char *lookahead_cpp_start, *lookahead_cpp_end;
 
   bool get_text(LEX_STRING *to, uint sep, int pre_skip, int post_skip);
 
@@ -2307,6 +2314,7 @@ public:
     Current statement digest instrumentation. 
   */
   sql_digest_state* m_digest;
+  friend int MYSQLlex(union YYSTYPE *yylval, THD *thd);
 };
 
 /**
@@ -2979,6 +2987,13 @@ public:
        !(last_key= new Key(key_type, key_name, algorithm, false, ddl)))
       return true;
     alter_info.key_list.push_back(last_key);
+    return false;
+  }
+  // Add a constraint as a part of CREATE TABLE or ALTER TABLE
+  bool add_constraint(LEX_STRING *name, Virtual_column_info *constr)
+  {
+    constr->name= *name;
+    alter_info.constraint_list.push_back(constr);
     return false;
   }
   void set_command(enum_sql_command command,

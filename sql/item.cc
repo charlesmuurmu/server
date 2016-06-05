@@ -411,7 +411,7 @@ int Item::save_time_in_field(Field *field)
 int Item::save_date_in_field(Field *field)
 {
   MYSQL_TIME ltime;
-  if (get_date(&ltime, sql_mode_for_dates(current_thd)))
+  if (get_date(&ltime, sql_mode_for_dates(field->table->in_use)))
     return set_field_to_null_with_conversions(field, 0);
   field->set_notnull();
   return field->store_time_dec(&ltime, decimals);
@@ -873,7 +873,7 @@ bool Item_field::find_item_in_field_list_processor(uchar *arg)
 
   NOTES
     This is used by filesort to register used fields in a a temporary
-    column read set or to register used fields in a view
+    column read set or to register used fields in a view or check constraint
 */
 
 bool Item_field::register_field_in_read_map(uchar *arg)
@@ -881,9 +881,14 @@ bool Item_field::register_field_in_read_map(uchar *arg)
   TABLE *table= (TABLE *) arg;
   if (field->table == table || !table)
     bitmap_set_bit(field->table->read_set, field->field_index);
-  if (field->vcol_info && field->vcol_info->expr_item)
-    return field->vcol_info->expr_item->walk(&Item::register_field_in_read_map, 
+  if (field->vcol_info && field->vcol_info->expr_item &&
+      !bitmap_is_set(field->table->vcol_set, field->field_index))
+  {
+    /* Ensure that the virtual fields is updated on read or write */
+    bitmap_set_bit(field->table->vcol_set, field->field_index);
+    return field->vcol_info->expr_item->walk(&Item::register_field_in_read_map,
                                              1, arg);
+  }
   return 0;
 }
 
@@ -913,6 +918,48 @@ bool Item_field::register_field_in_write_map(uchar *arg)
   TABLE *table= (TABLE *) arg;
   if (field->table == table || !table)
     bitmap_set_bit(field->table->write_set, field->field_index);
+  return 0;
+}
+
+/**
+  Check that we are not refering to any not yet initialized fields
+
+  Fields are initialized in this order:
+  - All fields that have default value as a constant are initialized first.
+  - Then all fields that has a default expression, in field_index order.
+  - Last all virtual fields, in field_index order.
+
+  This means:
+  - For default fields we can't access the same field or a field after
+    itself that doesn't have a non-constant default value.
+  - A virtual fields can't access itself or a virtual field after itself.
+
+  This is used by fix_vcol_expr() when a table is opened
+
+  We don't have to check fields that are marked as NO_DEFAULT_VALUE asa
+  as the upper level will ensure that all these will be given a value.
+*/
+
+bool Item_field::check_field_expression_processor(uchar *arg)
+{
+  if (field->flags & NO_DEFAULT_VALUE_FLAG)
+    return 0;
+  if ((field->default_value || field->has_insert_default_function() ||
+       field->vcol_info))
+  {
+    Field *org_field= (Field*) arg;
+    if (field == org_field ||
+        (!org_field->vcol_info && field->vcol_info) ||
+        (((field->vcol_info && org_field->vcol_info) ||
+          (!field->vcol_info && !org_field->vcol_info)) &&
+         field->field_index >= org_field->field_index))
+    {
+      my_error(ER_EXPRESSION_REFERS_TO_UNINIT_FIELD,
+               MYF(0),
+               org_field->field_name, field->field_name);
+      return 1;
+    }
+  }
   return 0;
 }
 
@@ -1065,6 +1112,7 @@ Item *Item::safe_charset_converter(THD *thd, CHARSET_INFO *tocs)
   TODO: we should eventually check all other use cases of change_item_tree().
   Perhaps some more potentially dangerous substitution examples exist.
 */
+
 Item *Item_cache::safe_charset_converter(THD *thd, CHARSET_INFO *tocs)
 {
   if (!example)
@@ -1092,6 +1140,7 @@ Item *Item_cache::safe_charset_converter(THD *thd, CHARSET_INFO *tocs)
   the latter returns a non-fixed Item, so val_str() crashes afterwards.
   Override Item_num method, to return a fixed item.
 */
+
 Item *Item_num::safe_charset_converter(THD *thd, CHARSET_INFO *tocs)
 {
   /*
@@ -1329,6 +1378,30 @@ int Item::save_in_field_no_warnings(Field *field, bool no_conversions)
   return res;
 }
 
+#ifndef DBUG_OFF
+static inline
+void mark_unsupported_func(const char *where, const char *processor_name)
+{
+  char buff[64];
+  sprintf(buff, "%s::%s", where ? where: "", processor_name);
+  DBUG_ENTER(buff);
+  sprintf(buff, "%s returns TRUE: unsupported function", processor_name);
+  DBUG_PRINT("info", ("%s", buff));
+  DBUG_VOID_RETURN;
+}
+#else
+#define mark_unsupported_func(X,Y) {}
+#endif
+
+bool mark_unsupported_function(const char *where, uchar *store, uint result)
+{
+  Item::vcol_func_processor_result *res=
+    (Item::vcol_func_processor_result*) store;
+  mark_unsupported_func(where, "check_vcol_func_processor");
+  res->errors|= result;  /* Store type of expression */
+  res->name= where ? where : "";
+  return false;
+}
 
 /*****************************************************************************
   Item_sp_variable methods
@@ -8111,7 +8184,8 @@ bool Item_default_value::fix_fields(THD *thd, Item **items)
   }
 
   field_arg= (Item_field *)real_arg;
-  if (field_arg->field->flags & NO_DEFAULT_VALUE_FLAG)
+  if ((field_arg->field->flags & NO_DEFAULT_VALUE_FLAG) ||
+      field_arg->field->default_value)
   {
     my_error(ER_NO_DEFAULT_FOR_FIELD, MYF(0), field_arg->field->field_name);
     goto error;
