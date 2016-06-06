@@ -4,6 +4,7 @@
 
 #include <my_config.h>
 #include <mysql/plugin.h>
+#include <cassandra.h>
 #include "ha_cassandra_v2.h"
 #include "sql_class.h"
 
@@ -94,7 +95,7 @@ int ha_cassandra_v2::rnd_pos(uchar *buf, uchar *pos){
 }
 
 void ha_cassandra_v2::position(const uchar *record){
-  return HA_ERR_INTERNAL_ERROR;
+  
 } 
 
 int ha_cassandra_v2::info(uint){
@@ -108,5 +109,10 @@ int ha_cassandra_v2::delete_all_rows(void){
 THR_LOCK_DATA **ha_cassandra_v2::store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type)
   {
-    DBUG_RETURN(to);
-  }                      
+    return NULL;
+  } 
+
+handler *cassandra_create_handler(handlerton *hton, TABLE_SHARE *table, MEM_ROOT *mem_root)
+  {
+    return NULL;
+  }                     

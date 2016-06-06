@@ -23,7 +23,7 @@
 #include "handler.h"                     /* handler */
 #include "my_base.h"
 
-#include "cassandra.h"                     /* Access to cassandra API */
+// #include "cassandra.h"                     /* Access to cassandra API */
 
 
 typedef struct st_cassandra_v2_share {
@@ -45,8 +45,7 @@ public:
   ha_cassandra_v2(handlerton *hton, TABLE_SHARE *table_arg);
   ~ha_cassandra_v2()
   {
-    free_field_converters();
-    delete se;
+    
   }
 
 public:

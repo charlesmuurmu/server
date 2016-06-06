@@ -1,49 +1,17 @@
-# use the first path that has cassandra.h included, if found
+# Copyright (c) 2006, 2010, Oracle and/or its affiliates. All rights reserved.
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-FIND_PATH(Datastax_INCLUDE_DIRS cassandra.h PATHS
-$ENV{DATASTAX_INCLUDE}      # environment variable to be used optionally
-${Datastax_INCLUDE_DIR}     # this may be set
-/usr/local/include/# list of additional directories to look from
-/opt/local/include
-/usr/include
-/opt/include
-)
-
-# Verify that cassandra linking library is found
-SET(Datastax_LIB_PATHS ${Datastax_LIB_PATHS} /usr/local/lib /opt/local/lib /opt/lib)
-FIND_LIBRARY(Datastax_LIBS NAMES cassandra PATHS ${Datastax_LIB_PATHS} ${Datastax_LIB})
-
-IF(EXISTS ${Datastax_LIBS})
-  GET_FILENAME_COMPONENT(LINK_DIR ${Datastax_LIBS} PATH ABSOLUTE)
-  INCLUDE_DIRECTORIES(AFTER ${Datastax_INCLUDE_DIRS}/..)
-  SET(CMAKE_REQUIRED_INCLUDES ${Datastax_INCLUDE_DIRS})
-
-  STRING(REPLACE "-fno-exceptions" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  STRING(REPLACE "-fno-implicit-templates" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-
-  SET(CMAKE_REQUIRED_INCLUDES "${Datastax_INCLUDE_DIRS}/..")
-  CHECK_CXX_SOURCE_COMPILES(
-"
-#include <cassandra.h>
-int main() {
-  CassFuture* connect_future = NULL;
-  CassCluster* cluster = cass_cluster_new();
-  CassSession* session = cass_session_new();
-  return 0;
-}
-" CASSANDRASE_V2_OK)
-ENDIF()
-
-SET(cassandra_sources
-    ha_cassandra_v2.cc
-    ha_cassandra_v2.h)
-
-LINK_DIRECTORIES(${LINK_DIR})
-
-IF(CASSANDRASE_V2_OK)
-  SET(CASSANDRA_V2_DEB_FILES "usr/lib/mysql/plugin/ha_cassandra_v2.so" PARENT_SCOPE)
-  MYSQL_ADD_PLUGIN(cassandra ${cassandra_sources} STORAGE_ENGINE
-    MODULE_ONLY LINK_LIBRARIES cassandra COMPONENT cassandra-engine)
-ENDIF(CASSANDRASE_V2_OK)
-
-
+SET(CASSANDRA_V2_SOURCES ha_cassandra_v2.cc)
+MYSQL_ADD_PLUGIN(cassandra_v2 ${CASSANDRA_V2_SOURCES} STORAGE_ENGINE MODULE_ONLY COMPONENT Test)
